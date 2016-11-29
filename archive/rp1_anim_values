@@ -1,0 +1,17 @@
+0 ramp .01
+0.1 step 0.35
+0.101 ramp 0.01
+0.2 step 0.35
+
+(used above repeating till t=1; 
+first step ramp contour of streamlines from 0.01 to 0.35, then step back to 0.01)
+
+0 step 1
+0.1 step 0 
+0.2 step 1
+0.3 step 0
+
+(use above on visibility of clip1) do inverse on visibility of other clip (or shrink like I used)
+
+camera
+just pick the positions and it will interpolate between them

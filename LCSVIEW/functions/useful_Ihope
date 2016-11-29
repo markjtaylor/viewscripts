@@ -1,0 +1,58 @@
+>> I found a similar posting:
+>>
+>> http://www.mail-archive.com/paraview@paraview.org/msg02936.html. Is
+>> there o bug for it so far?
+>>
+>> My current workaround is to extract BLocks (from EnsightReader) and
+>> numbering them using Python functinality:
+>>
+>> dict ={}
+>> source = GetActiveSource()
+>> if not source:
+>>      raise RuntimeError, "This macro needs an active pipeline object"
+>> source.UpdatePipeline()
+>> cdi = source.GetDataInformation().GetCompositeDataInformation()
+>> blocks = cdi.GetNumberOfChildren()
+>> for i in range(blocks):
+>>      dict.update(cdi.GetDataInformation(i) : i+1)
+>>
+>>
+>> Afterwards dictionary dict contains name of the block and its according
+>> index. However it only works if:
+>>
+>>     * Blocks are numbered starting from one without spaces
+>>
+>> This was the case for all my tests so far. Is this always right?
+>>
+>> Regards
+
+
+
+m paraview.simple import *
+ 
+def extract_block(source, outputType, name, di, idx):
+   if name:
+       pf = ProgrammableFilter(source, registrationName=name)
+   else:
+       pf = ProgrammableFilter(source)
+   pf.OutputDataSetType = outputType
+   pf.Script = """
+input = self.GetInputDataObject(0, 0)
+self.GetOutputDataObject(0).ShallowCopy(input.GetBlock(%d))""" % idx
+   if outputType == 'vtkImageData' or outputType ==
+'vtkStructuredGrid' or outputType == 'vtkRectilinearGrid':
+       pf.RequestInformationScript = """
+from paraview import util
+util.SetOutputWholeExtent(self, %r)""" % list(di.GetExtent())
+   Show(pf)
+ 
+source = GetActiveSource()
+if not source:
+   raise RuntimeError, "This macro needs an active pipeline object"
+source.UpdatePipeline()
+cdi = source.GetDataInformation().GetCompositeDataInformation()
+blocks = cdi.GetNumberOfChildren()
+for i in range(blocks):
+   di = cdi.GetDataInformation(i)
+   eb = extract_block(source, di.GetDataClassName(), cdi.GetName(i), di, i)
+Hide(source)

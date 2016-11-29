@@ -1,0 +1,3 @@
+source ~programs/firedrake/bin/activate
+
+then python mesh_maker.py

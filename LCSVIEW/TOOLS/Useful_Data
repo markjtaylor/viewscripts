@@ -1,0 +1,167 @@
+numCells = DataSliceFile.GetNumberOfCells()
+
+data=[]
+for x in range(numCells):
+    data.append(DataSliceFile.GetCellData().GetArray('p').GetValue(x))
+
+print data
+or this
+
+Code:
+numCells = DataSliceFile.GetNumberOfCells()
+new=DataSliceFile.CellData['p']
+
+data=[]
+for x in range(numCells):
+    data.append(new[x])
+
+print data
+
+
+animationScene1 = GetAnimationScene()
+
+animationScene1.Play()
+
+
+http://www.paraview.org/Wiki/ParaView/Custom_Filters
+
+
+in clip expand the menu to get access to transform button. use probe to define a point at the centre of the wheel as the origin (for us to rotate about). then set this to say 30 degrees
+make another clip for 60,90,120....360
+then go to the animation and repeat making one of these visible at each step until the video ends
+ideally I will have identified a way to pick out data clips via their Layer name (or similar)
+
+for building OSPRAY
+
+http://tacc.github.io/pvOSPRay/getting_pvospray.html#binary
+
+--------this works for getting information----------------------
+
+>>> fw271981case.GetDataInformation().GetNumberOfCells()
+6709376L
+>>> fw271981case.GetDataInformation().GetNumberOfPoints()
+7096686L
+>>> clip1.GetDataInformation().GetNumberOfCells()
+598402L
+>>> clip1.GetDataInformation().GetNumberOfPoints()
+590996L
+>>> 
+
+>>> numcells=clip1.GetDataInformation().GetNumberOfCells()
+>>> print numcells
+598402
+>>> 
+
+a nice trick is
+dataInfo=reader.GetDataInformation()
+
+
+
+-----------------------------
+> max=-1.0
+> for i in range(0, numPoints):
+>     if (max < temperature.GetValue(i)):
+>         max = temperature.GetValue(i)
+> print(max)
+
+
+
+multiblock inspector may be useful
+--------------------------------------------------------------------------
+deselect layer 5 gets you the aerofoil, then make that the selection and then extract selection
+
+# find source
+extractSurface1 = FindSource('ExtractSurface1')
+
+# create a new 'Extract Selection'
+extractSelection1 = ExtractSelection(Input=extractSurface1,
+    Selection=None)
+
+http://www.paraview.org/pipermail/paraview/2010-January/015423.html may help with getting names of the blocks for selection
+
+dict ={}
+source = GetActiveSource()
+if not source:
+    raise RuntimeError, "This macro needs an active pipeline object"
+source.UpdatePipeline()
+cdi = source.GetDataInformation().GetCompositeDataInformation()
+blocks = cdi.GetNumberOfChildren()
+for i in range(blocks):
+    dict.update(cdi.GetDataInformation(i) : i+1)
+
+or this might work too
+
+from paraview.simple import *
+ 
+def extract_block(source, outputType, name, di, idx):
+   if name:
+       pf = ProgrammableFilter(source, registrationName=name)
+   else:
+       pf = ProgrammableFilter(source)
+   pf.OutputDataSetType = outputType
+   pf.Script = """
+input = self.GetInputDataObject(0, 0)
+self.GetOutputDataObject(0).ShallowCopy(input.GetBlock(%d))""" % idx
+   if outputType == 'vtkImageData' or outputType ==
+'vtkStructuredGrid' or outputType == 'vtkRectilinearGrid':
+       pf.RequestInformationScript = """
+from paraview import util
+util.SetOutputWholeExtent(self, %r)""" % list(di.GetExtent())
+   Show(pf)
+ 
+source = GetActiveSource()
+if not source:
+   raise RuntimeError, "This macro needs an active pipeline object"
+source.UpdatePipeline()
+cdi = source.GetDataInformation().GetCompositeDataInformation()
+blocks = cdi.GetNumberOfChildren()
+for i in range(blocks):
+   di = cdi.GetDataInformation(i)
+   eb = extract_block(source, di.GetDataClassName(), cdi.GetName(i), di, i)
+Hide(source)
+
+http://www.paraview.org/ParaView/Doc/Nightly/www/py-doc/paraview.simple.ExtractBlock.html
+
+--------------------
+this may help me get a background logo displayed
+Michael,
+
+Use something like follows:
+
+txt = servermanager.rendering.ImageTexture()
+txt.SourceProcess="Client"
+txt.FileName = "/tmp/foo.png"
+
+view.BackgroundTexture = txt
+view.UseTexturedBackground = 1
+Render()
+
+Utkarsh
+
+
+------------------------------------
+
+http://www.paraview.org/pipermail/paraview/2010-April/016924.html
+use this for finding out about using texture coordinates
+
+
+
+
+--------------
+
+Since I ended up not giving you my email address and you didn't give me a link to a Dropbox file or similar, and because of a question asked in this post: Paraview slice type - cylinder? post #24, here's what I've done to create a similar situation:
+Used OpenFOAM to ran its tutorial "incompressible/icoFoam/cavity". It provides data for both points and cells.
+I created a dummy tessellated mesh by using the following steps:
+The tutorial has the dimensions of 0.1 x 0.1 x 0.01, so I used the "Source" named "Box" and created a box with the same dimensions and position.
+Then used the "Triangulate" filter.
+And to the previous one I used the "Subdivide" filter, so that I would have a good surface mesh.
+Then used "File -> Save Data" and saved to STL.
+I then removed the items used for generating the STL and loaded the STL back into ParaView.
+Now with both the volume data and the dummy surface mesh loaded into ParaView, I chose the item for the tutorial "cavity.OpenFOAM" and applied the filter "Resample with DataSet". This filter asks for an input and a source, which I configured as follows (shown in the attached pictures):
+Input: "cavity.OpenFOAM"
+Source: "sampling_surface.stl"
+The result gave me the surface from "sampling_surface.stl", with interpolated data from "cavity.OpenFOAM". The only problem is that it only provided the point data and did not provide the cell data 
+The reason why I had asked for an example case was so that I didn't have to create one myself 
+
+Best regards,
+
